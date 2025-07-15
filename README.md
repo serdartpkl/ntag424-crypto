@@ -10,12 +10,11 @@ const NTAG424Crypto = require('./ntag424-crypto');
 
 // Simple decryption with default settings
 const decoder = new NTAG424Crypto.Decoder('00112233445566778899AABBCCDDEEFF');
-const result = decoder.decrypt('https://example.com/nfc?picc_data=ABC123&enc=DEF456&cmac=789ABC');
+const result = decoder.decrypt('https://example.com/nfc?picc_data=ABC123&cmac=789ABC');
 
 if (result.success && result.cmacValid) {
     console.log(`UID: ${result.uid}`);
     console.log(`Counter: ${result.readCounter}`);
-    console.log(`File Data: ${result.encryptedFileData}`); // From 'enc' parameter
 }
 ```
 
