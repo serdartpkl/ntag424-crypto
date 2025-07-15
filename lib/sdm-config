@@ -1,0 +1,194 @@
+/**
+ * SDM (Secure Dynamic Messaging) Configuration Handler
+ * 
+ * Manages different SDM profile configurations for NTAG424 tags. SDM profiles define
+ * what data is included in the encrypted PICC data (UID, counter, file data) and
+ * their positions within the data structure.
+ */
+class SDMConfig {
+  
+  /**
+   * Predefined SDM profiles for common NTAG424 configurations.
+   * Each profile defines the structure and content of encrypted data.
+   */
+  static profiles = {
+    uidOnly: {
+      includeUID: true,
+      includeCounter: false,
+      includeFileData: false,
+      piccDataLength: 16,
+      uidOffset: 1,
+      uidLength: 7
+    },
+    
+    counterOnly: {
+      includeUID: false,
+      includeCounter: true,
+      includeFileData: false,
+      piccDataLength: 16,
+      counterOffset: 1,
+      counterLength: 3
+    },
+    
+    uidCounter: {
+      includeUID: true,
+      includeCounter: true,
+      includeFileData: false,
+      piccDataLength: 16,
+      uidOffset: 1,
+      uidLength: 7,
+      counterOffset: 8,
+      counterLength: 3
+    },
+    
+    full: {
+      includeUID: true,
+      includeCounter: true,
+      includeFileData: true,
+      piccDataLength: 16,
+      uidOffset: 1,
+      uidLength: 7,
+      counterOffset: 8,
+      counterLength: 3,
+      encFileDataLength: 16
+    }
+  };
+  
+  /**
+   * Get a predefined SDM profile by name
+   * 
+   * @param {string} profileName - Name of the profile (uidOnly, counterOnly, uidCounter, full)
+   * @returns {Object} The SDM profile configuration object
+   * 
+   * @example
+   * const profile = SDMConfig.getProfile('uidCounter');
+   */
+  static getProfile(profileName) {
+    if (!profileName || typeof profileName !== 'string') {
+      return this.profiles.uidCounter;
+    }
+    
+    return this.profiles[profileName] || this.profiles.uidCounter;
+  }
+  
+  /**
+   * Create a custom SDM profile configuration
+   * 
+   * Allows creation of custom SDM profiles for non-standard NTAG424 configurations.
+   * All parameters are optional and will default to safe values.
+   * 
+   * @param {Object} config - Custom configuration object
+   * @param {boolean} config.includeUID - Whether UID is included in PICC data
+   * @param {boolean} config.includeCounter - Whether counter is included in PICC data
+   * @param {boolean} config.includeFileData - Whether encrypted file data is present
+   * @param {number} config.piccDataLength - Length of PICC data block
+   * @param {number} config.uidOffset - Byte offset of UID in PICC data
+   * @param {number} config.uidLength - Length of UID in bytes
+   * @param {number} config.counterOffset - Byte offset of counter in PICC data
+   * @param {number} config.counterLength - Length of counter in bytes
+   * @param {number} config.encFileDataLength - Length of encrypted file data
+   * @returns {Object} Complete SDM profile configuration
+   * 
+   * @example
+   * const customProfile = SDMConfig.createCustomProfile({
+   *   includeUID: true,
+   *   includeCounter: false,
+   *   uidOffset: 2,
+   *   uidLength: 6
+   * });
+   */
+  static createCustomProfile(config = {}) {
+    return {
+      includeUID: config.includeUID || false,
+      includeCounter: config.includeCounter || false,
+      includeFileData: config.includeFileData || false,
+      piccDataLength: config.piccDataLength || 16,
+      uidOffset: config.uidOffset || 1,
+      uidLength: config.uidLength || 7,
+      counterOffset: config.counterOffset || 8,
+      counterLength: config.counterLength || 3,
+      encFileDataLength: config.encFileDataLength || 16,
+      ...config
+    };
+  }
+  
+  /**
+   * Validate SDM profile configuration
+   * 
+   * Checks if the provided SDM configuration is valid and consistent.
+   * 
+   * @param {Object} profile - SDM profile to validate
+   * @returns {Object} Validation result with isValid flag and errors array
+   * 
+   * @example
+   * const validation = SDMConfig.validateProfile(customProfile);
+   * if (!validation.isValid) {
+   *   console.error('Profile errors:', validation.errors);
+   * }
+   */
+  static validateProfile(profile) {
+    const errors = [];
+    
+    if (!profile || typeof profile !== 'object') {
+      return { isValid: false, errors: ['Profile must be an object'] };
+    }
+    
+    if (typeof profile.piccDataLength !== 'number' || profile.piccDataLength < 1) {
+      errors.push('piccDataLength must be a positive number');
+    }
+    
+    if (profile.includeUID) {
+      if (typeof profile.uidOffset !== 'number' || profile.uidOffset < 0) {
+        errors.push('uidOffset must be a non-negative number when includeUID is true');
+      }
+      if (typeof profile.uidLength !== 'number' || profile.uidLength < 1) {
+        errors.push('uidLength must be a positive number when includeUID is true');
+      }
+      if (profile.uidOffset + profile.uidLength > profile.piccDataLength) {
+        errors.push('UID data extends beyond PICC data length');
+      }
+    }
+    
+    if (profile.includeCounter) {
+      if (typeof profile.counterOffset !== 'number' || profile.counterOffset < 0) {
+        errors.push('counterOffset must be a non-negative number when includeCounter is true');
+      }
+      if (typeof profile.counterLength !== 'number' || profile.counterLength < 1) {
+        errors.push('counterLength must be a positive number when includeCounter is true');
+      }
+      if (profile.counterOffset + profile.counterLength > profile.piccDataLength) {
+        errors.push('Counter data extends beyond PICC data length');
+      }
+    }
+    
+    if (profile.includeUID && profile.includeCounter) {
+      const uidEnd = profile.uidOffset + profile.uidLength;
+      const counterEnd = profile.counterOffset + profile.counterLength;
+      
+      if ((profile.uidOffset < profile.counterOffset && uidEnd > profile.counterOffset) ||
+          (profile.counterOffset < profile.uidOffset && counterEnd > profile.uidOffset)) {
+        errors.push('UID and counter data regions overlap');
+      }
+    }
+    
+    return {
+      isValid: errors.length === 0,
+      errors
+    };
+  }
+  
+  /**
+   * Get available profile names
+   * 
+   * @returns {string[]} Array of available profile names
+   * 
+   * @example
+   * const profiles = SDMConfig.getAvailableProfiles();
+   * console.log('Available profiles:', profiles);
+   */
+  static getAvailableProfiles() {
+    return Object.keys(this.profiles);
+  }
+}
+
+module.exports = SDMConfig;
