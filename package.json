@@ -1,11 +1,12 @@
 {
   "name": "ntag424-crypto",
   "version": "1.0.0",
-  "description": "Comprehensive, hardware-agnostic cryptographic library for NTAG424 DNA encryption/decryption operations",
+  "description": "Production-ready Node.js library for NTAG424 DNA encryption and decryption operations. Zero vector implementation compatible with standard NTAG424 chips.",
   "main": "ntag424-crypto.js",
   "scripts": {
-    "test": "node test.js",
-    "test:quick": "node -e \"const { quickTest } = require('./test'); const result = quickTest('00112233445566778899AABBCCDDEEFF', 'https://test.com/nfc?picc_data=FDE4AFA99B5C820A2C1BB0F1C792D0EB&cmac=C48B89C17A233B2C'); console.log('Success:', result.success, 'CMAC:', result.cmacValid);\""
+    "test": "node comprehensive-test.js",
+    "demo": "node simple-demo.js",
+    "start": "node simple-demo.js"
   },
   "keywords": [
     "ntag424",
@@ -19,10 +20,15 @@
     "nxp",
     "authentication",
     "security",
-    "pos",
-    "restaurant",
-    "access-control",
-    "iot"
+    "zero-vector",
+    "dna",
+    "tag",
+    "ndef",
+    "mifare",
+    "cryptography",
+    "hardware-agnostic",
+    "server-side",
+    "validation"
   ],
   "author": "Serdar Tepekule",
   "license": "MIT",
@@ -42,8 +48,13 @@
   "homepage": "https://github.com/serdartpkl/ntag424-crypto#readme",
   "files": [
     "ntag424-crypto.js",
-    "test.js",
+    "lib/",
+    "comprehensive-test.js",
+    "simple-demo.js",
     "README.md",
     "LICENSE"
-  ]
+  ],
+  "directories": {
+    "lib": "lib"
+  }
 }
