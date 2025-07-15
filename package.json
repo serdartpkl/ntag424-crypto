@@ -1,0 +1,49 @@
+{
+  "name": "ntag424-crypto",
+  "version": "1.0.0",
+  "description": "Comprehensive, hardware-agnostic cryptographic library for NTAG424 DNA encryption/decryption operations",
+  "main": "ntag424-crypto.js",
+  "scripts": {
+    "test": "node test.js",
+    "test:quick": "node -e \"const { quickTest } = require('./test'); const result = quickTest('00112233445566778899AABBCCDDEEFF', 'https://test.com/nfc?picc_data=FDE4AFA99B5C820A2C1BB0F1C792D0EB&cmac=C48B89C17A233B2C'); console.log('Success:', result.success, 'CMAC:', result.cmacValid);\""
+  },
+  "keywords": [
+    "ntag424",
+    "nfc",
+    "encryption",
+    "decryption",
+    "crypto",
+    "aes",
+    "cmac",
+    "sdm",
+    "nxp",
+    "authentication",
+    "security",
+    "pos",
+    "restaurant",
+    "access-control",
+    "iot"
+  ],
+  "author": "Serdar Tepekule",
+  "license": "MIT",
+  "dependencies": {
+    "node-aes-cmac": "^0.1.1"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/serdartpkl/ntag424-crypto.git"
+  },
+  "bugs": {
+    "url": "https://github.com/serdartpkl/ntag424-crypto/issues"
+  },
+  "homepage": "https://github.com/serdartpkl/ntag424-crypto#readme",
+  "files": [
+    "ntag424-crypto.js",
+    "test.js",
+    "README.md",
+    "LICENSE"
+  ]
+}
