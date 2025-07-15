@@ -1,7 +1,7 @@
 {
   "name": "ntag424-crypto",
   "version": "1.0.0",
-  "description": "Production-ready Node.js library for NTAG424 DNA encryption and decryption operations. Zero vector implementation compatible with standard NTAG424 chips.",
+  "description": "A production-ready Node.js library for NTAG424 DNA encryption and decryption operations. This library provides complete cryptographic functionality for NTAG424 tags without hardware dependencies, designed for server-side processing and validation.",
   "main": "ntag424-crypto.js",
   "scripts": {
     "test": "node comprehensive-test.js",
