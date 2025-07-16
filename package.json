@@ -1,7 +1,7 @@
 {
   "name": "ntag424-crypto",
   "version": "2.0.0",
-  "description": "Production-ready Node.js library for NTAG424 DNA encryption and decryption operations. Fixed SDM profile validation and enhanced security.",
+  "description": "Production-ready Node.js library for NTAG424 DNA encryption and decryption operations.",
   "main": "ntag424-crypto.js",
   "scripts": {
     "test": "node test.js",
