@@ -7,12 +7,12 @@ A production-ready Node.js library for NTAG424 DNA encryption and decryption ope
 - **Zero Vector Decryption** - Compatible with standard NTAG424 implementations
 - **Secure Master Key Generation** - Cryptographically secure random key generation
 - **Multiple Output Formats** - Object, URL, and query string formats
-- **File Data Encryption** - Support for encrypted file data (ENC parameter)
+- **Dynamic File Data Encryption** - Support for any length encrypted file data
 - **Multiple Key Derivation Methods** - NTAG424 official, HKDF, PBKDF2, and simple hash
-- **Configurable SDM Profiles** - Support for different Secure Dynamic Messaging configurations
+- **Custom SDM Profiles** - Create specialized Secure Dynamic Messaging configurations
 - **CMAC Authentication** - Data integrity and authenticity verification
 - **High Performance** - 1000+ operations per second
-- **Zero Dependencies** - Only requires Node.js built-in crypto and node-aes-cmac
+- **Robust Error Handling** - Comprehensive validation and null safety
 
 ## Installation
 
@@ -34,18 +34,24 @@ const NTAG424Crypto = require('ntag424-crypto');
 // Generate a secure master key
 const masterKey = NTAG424Crypto.Encoder.generateMasterKey();
 
-// Encrypt data
-const encrypted = NTAG424Crypto.Encoder.encrypt(masterKey, '04AABBCCDDEE80', 42);
+// Encrypt data with file content
+const encrypted = NTAG424Crypto.Encoder.encrypt(
+  masterKey, 
+  '04AABBCCDDEE80', 
+  42, 
+  'Any length secret data!'
+);
 
 // Generate URL for NFC tag
 const url = NTAG424Crypto.Encoder.generateURL(encrypted, 'https://example.com/nfc');
 
 // Decrypt data
-const decoder = new NTAG424Crypto.Decoder(masterKey);
+const decoder = new NTAG424Crypto.Decoder(masterKey, { sdmProfile: 'full' });
 const result = decoder.decrypt(url);
 
 console.log('UID:', result.uid);
 console.log('Counter:', result.readCounter);
+console.log('Secret Data:', result.encryptedFileData);
 console.log('Valid:', result.success && result.cmacValid);
 ```
 
@@ -55,13 +61,13 @@ console.log('Valid:', result.success && result.cmacValid);
 
 #### `NTAG424Crypto.Encoder.encrypt(masterKey, uid, counter, fileData, options)`
 
-Encrypts data using NTAG424 algorithms.
+Encrypts data using NTAG424 algorithms with dynamic file data support.
 
 **Parameters:**
 - `masterKey` (string) - 32-character hexadecimal master key
 - `uid` (string|Buffer) - 7-byte UID as 14-character hex string or Buffer
 - `counter` (number|Buffer) - Scan counter (0-16777215) or 3-byte Buffer
-- `fileData` (string|Buffer, optional) - File data to encrypt
+- `fileData` (string|Buffer, optional) - File data to encrypt (any length supported)
 - `options` (object, optional) - Configuration options
   - `keyDerivationMethod` (string) - 'ntag424Official' (default), 'hkdf', 'pbkdf2', 'simpleHash'
   - `sdmProfile` (string) - 'uidCounter' (default), 'uidOnly', 'counterOnly', 'full'
@@ -74,7 +80,7 @@ const result = NTAG424Crypto.Encoder.encrypt(
   '00112233445566778899AABBCCDDEEFF',
   '04AABBCCDDEE80',
   42,
-  'Secret data'
+  'Long secret message that can be any length!'
 );
 ```
 
@@ -125,7 +131,7 @@ const query = NTAG424Crypto.Encoder.generateQueryString(encrypted);
 
 #### `new NTAG424Crypto.Decoder(masterKey, options)`
 
-Creates a new decoder instance.
+Creates a new decoder instance with robust file data handling.
 
 **Parameters:**
 - `masterKey` (string) - 32-character hexadecimal master key
@@ -137,12 +143,14 @@ Creates a new decoder instance.
 
 **Example:**
 ```javascript
-const decoder = new NTAG424Crypto.Decoder('00112233445566778899AABBCCDDEEFF');
+const decoder = new NTAG424Crypto.Decoder('00112233445566778899AABBCCDDEEFF', {
+  sdmProfile: 'full'
+});
 ```
 
 #### `decoder.decrypt(input, customOptions)`
 
-Decrypts NTAG424 data.
+Decrypts NTAG424 data with automatic file data conversion.
 
 **Parameters:**
 - `input` (string|object) - URL, query string, or object with encrypted data
@@ -154,17 +162,18 @@ Decrypts NTAG424 data.
 - `readCounter` (number) - Read counter value
 - `dataTag` (string) - Data tag as hex string
 - `cmacValid` (boolean) - CMAC validation result
-- `encryptedFileData` (string) - Decrypted file data (if present)
+- `encryptedFileData` (string) - Decrypted file data as UTF-8 string (any length)
 - `sessionKeys` (object) - Generated session keys
 - `error` (string) - Error message if decryption failed
 
 **Example:**
 ```javascript
-const result = decoder.decrypt('https://example.com/nfc?picc_data=ABC123&cmac=DEF456');
+const result = decoder.decrypt('https://example.com/nfc?picc_data=ABC123&enc=DEF456&cmac=789ABC');
 
 if (result.success && result.cmacValid) {
   console.log('UID:', result.uid);
   console.log('Counter:', result.readCounter);
+  console.log('Secret Data:', result.encryptedFileData);
 } else {
   console.error('Decryption failed:', result.error);
 }
@@ -299,8 +308,10 @@ UIDs must be exactly 14 hexadecimal characters (7 bytes):
 
 ## Performance
 
-The library is optimized for high performance:
+The library is optimized for high performance with robust file data handling:
 - 1000+ encrypt/decrypt operations per second
+- Dynamic file data encryption (any length supported)
+- Automatic UTF-8 conversion with null safety
 - Zero hardware dependencies
 - Minimal memory footprint
 - Efficient zero vector implementation
@@ -343,12 +354,12 @@ const query = NTAG424Crypto.Encoder.generateQueryString(encrypted);
 ### File Data Encryption
 
 ```javascript
-// Encrypt with file data
+// Encrypt with any length file data
 const withFileData = NTAG424Crypto.Encoder.encrypt(
   masterKey, 
   '04AABBCCDDEE80', 
   42, 
-  'Secret file content'
+  'This can be a very long secret message with any content!'
 );
 
 // Decrypt with file data support
@@ -358,6 +369,8 @@ const result = decoder.decrypt({
   enc: withFileData.encryptedData.enc,
   cmac: withFileData.encryptedData.cmac
 });
+
+console.log('Secret:', result.encryptedFileData); // Full UTF-8 string
 ```
 
 ### Custom SDM Profile
