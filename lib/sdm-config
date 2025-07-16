@@ -1,36 +1,41 @@
+const { SDMProfileError, ValidationError } = require('./error-types');
+
 /**
- * SDM (Secure Dynamic Messaging) Configuration Handler
+ * SDM Configuration with Proper Validation
  * 
- * Manages different SDM profile configurations for NTAG424 tags. SDM profiles define
- * what data is included in the encrypted PICC data (UID, counter, file data) and
- * their positions within the data structure.
+ * Fixes the bug where file data could be encrypted with profiles
+ * that don't support it, and adds comprehensive validation.
  */
 class SDMConfig {
   
   /**
-   * Predefined SDM profiles for common NTAG424 configurations.
-   * Each profile defines the structure and content of encrypted data.
+   * Predefined SDM profiles with validation rules
    */
   static profiles = {
     uidOnly: {
+      name: 'uidOnly',
       includeUID: true,
       includeCounter: false,
       includeFileData: false,
       piccDataLength: 16,
       uidOffset: 1,
-      uidLength: 7
+      uidLength: 7,
+      description: 'Only UID in encrypted data'
     },
     
     counterOnly: {
+      name: 'counterOnly',
       includeUID: false,
       includeCounter: true,
       includeFileData: false,
       piccDataLength: 16,
       counterOffset: 1,
-      counterLength: 3
+      counterLength: 3,
+      description: 'Only counter in encrypted data'
     },
     
     uidCounter: {
+      name: 'uidCounter',
       includeUID: true,
       includeCounter: true,
       includeFileData: false,
@@ -38,10 +43,12 @@ class SDMConfig {
       uidOffset: 1,
       uidLength: 7,
       counterOffset: 8,
-      counterLength: 3
+      counterLength: 3,
+      description: 'Both UID and counter (default)'
     },
     
     full: {
+      name: 'full',
       includeUID: true,
       includeCounter: true,
       includeFileData: true,
@@ -50,55 +57,115 @@ class SDMConfig {
       uidLength: 7,
       counterOffset: 8,
       counterLength: 3,
-      encFileDataLength: 16
+      encFileDataLength: 16,
+      description: 'UID, counter, and file data'
     }
   };
-  
+
   /**
    * Get a predefined SDM profile by name
    * 
-   * @param {string} profileName - Name of the profile (uidOnly, counterOnly, uidCounter, full)
+   * @param {string} profileName - Name of the profile
    * @returns {Object} The SDM profile configuration object
-   * 
-   * @example
-   * const profile = SDMConfig.getProfile('uidCounter');
    */
   static getProfile(profileName) {
     if (!profileName || typeof profileName !== 'string') {
       return this.profiles.uidCounter;
     }
     
-    return this.profiles[profileName] || this.profiles.uidCounter;
+    const profile = this.profiles[profileName];
+    if (!profile) {
+      throw new SDMProfileError(
+        `Unknown SDM profile: ${profileName}`,
+        profileName,
+        'getProfile'
+      );
+    }
+    
+    return profile;
   }
-  
+
+  /**
+   * Validate operation compatibility with SDM profile
+   * 
+   * @param {string} operation - Operation type ('encrypt' or 'decrypt')
+   * @param {Object|string} profile - SDM profile or profile name
+   * @param {Object} data - Data to validate
+   * @returns {boolean} True if validation passes
+   */
+  static validateOperationWithProfile(operation, profile, data) {
+    if (typeof profile === 'string') {
+      profile = this.getProfile(profile);
+    }
+    
+    if (!profile) {
+      throw new SDMProfileError(
+        'Invalid SDM profile',
+        profile,
+        operation
+      );
+    }
+    
+    const errors = [];
+    
+    if (operation === 'encrypt') {
+      if (data.fileData !== null && data.fileData !== undefined) {
+        if (!profile.includeFileData) {
+          errors.push(
+            `Profile '${profile.name}' does not support file data encryption. Use 'full' profile instead.`
+          );
+        }
+      }
+      
+      if (!data.uid && profile.includeUID) {
+        errors.push(
+          `Profile '${profile.name}' requires UID but none provided`
+        );
+      }
+      
+      if ((data.counter === null || data.counter === undefined) && profile.includeCounter) {
+        errors.push(
+          `Profile '${profile.name}' requires counter but none provided`
+        );
+      }
+    }
+    
+    if (operation === 'decrypt') {
+      if (data.enc && !profile.includeFileData) {
+        errors.push(
+          `Profile '${profile.name}' does not support encrypted file data. Use 'full' profile instead.`
+        );
+      }
+      
+      if (!data.picc) {
+        errors.push('PICC data is required for decryption');
+      }
+      
+      if (!data.cmac) {
+        errors.push('CMAC data is required for decryption');
+      }
+    }
+    
+    if (errors.length > 0) {
+      throw new SDMProfileError(
+        `SDM profile validation failed: ${errors.join(', ')}`,
+        profile,
+        operation
+      );
+    }
+    
+    return true;
+  }
+
   /**
    * Create a custom SDM profile configuration
    * 
-   * Allows creation of custom SDM profiles for non-standard NTAG424 configurations.
-   * All parameters are optional and will default to safe values.
-   * 
-   * @param {Object} config - Custom configuration object
-   * @param {boolean} config.includeUID - Whether UID is included in PICC data
-   * @param {boolean} config.includeCounter - Whether counter is included in PICC data
-   * @param {boolean} config.includeFileData - Whether encrypted file data is present
-   * @param {number} config.piccDataLength - Length of PICC data block
-   * @param {number} config.uidOffset - Byte offset of UID in PICC data
-   * @param {number} config.uidLength - Length of UID in bytes
-   * @param {number} config.counterOffset - Byte offset of counter in PICC data
-   * @param {number} config.counterLength - Length of counter in bytes
-   * @param {number} config.encFileDataLength - Length of encrypted file data
+   * @param {Object} config - Configuration object
    * @returns {Object} Complete SDM profile configuration
-   * 
-   * @example
-   * const customProfile = SDMConfig.createCustomProfile({
-   *   includeUID: true,
-   *   includeCounter: false,
-   *   uidOffset: 2,
-   *   uidLength: 6
-   * });
    */
   static createCustomProfile(config = {}) {
-    return {
+    const profile = {
+      name: config.name || 'custom',
       includeUID: config.includeUID || false,
       includeCounter: config.includeCounter || false,
       includeFileData: config.includeFileData || false,
@@ -108,23 +175,27 @@ class SDMConfig {
       counterOffset: config.counterOffset || 8,
       counterLength: config.counterLength || 3,
       encFileDataLength: config.encFileDataLength || 16,
+      description: config.description || 'Custom SDM profile',
       ...config
     };
+
+    const validation = this.validateProfile(profile);
+    if (!validation.isValid) {
+      throw new SDMProfileError(
+        `Invalid custom SDM profile: ${validation.errors.join(', ')}`,
+        profile,
+        'createCustomProfile'
+      );
+    }
+
+    return profile;
   }
-  
+
   /**
    * Validate SDM profile configuration
    * 
-   * Checks if the provided SDM configuration is valid and consistent.
-   * 
-   * @param {Object} profile - SDM profile to validate
-   * @returns {Object} Validation result with isValid flag and errors array
-   * 
-   * @example
-   * const validation = SDMConfig.validateProfile(customProfile);
-   * if (!validation.isValid) {
-   *   console.error('Profile errors:', validation.errors);
-   * }
+   * @param {Object} profile - Profile to validate
+   * @returns {Object} Validation result
    */
   static validateProfile(profile) {
     const errors = [];
@@ -171,23 +242,80 @@ class SDMConfig {
       }
     }
     
+    if (profile.includeFileData) {
+      if (typeof profile.encFileDataLength !== 'number' || profile.encFileDataLength < 1) {
+        errors.push('encFileDataLength must be a positive number when includeFileData is true');
+      }
+    }
+    
     return {
       isValid: errors.length === 0,
       errors
     };
   }
-  
+
   /**
    * Get available profile names
    * 
-   * @returns {string[]} Array of available profile names
-   * 
-   * @example
-   * const profiles = SDMConfig.getAvailableProfiles();
-   * console.log('Available profiles:', profiles);
+   * @returns {string[]} Array of profile names
    */
   static getAvailableProfiles() {
     return Object.keys(this.profiles);
+  }
+
+  /**
+   * Get profile information for debugging
+   * 
+   * @param {string} profileName - Name of the profile
+   * @returns {Object} Profile information
+   */
+  static getProfileInfo(profileName) {
+    const profile = this.getProfile(profileName);
+    return {
+      name: profile.name,
+      description: profile.description,
+      capabilities: {
+        supportsUID: profile.includeUID,
+        supportsCounter: profile.includeCounter,
+        supportsFileData: profile.includeFileData
+      },
+      dataLayout: {
+        piccDataLength: profile.piccDataLength,
+        uidOffset: profile.uidOffset,
+        uidLength: profile.uidLength,
+        counterOffset: profile.counterOffset,
+        counterLength: profile.counterLength,
+        encFileDataLength: profile.encFileDataLength
+      }
+    };
+  }
+
+  /**
+   * Suggest compatible profile for given requirements
+   * 
+   * @param {Object} requirements - Requirements object
+   * @returns {string} Suggested profile name
+   */
+  static suggestProfile(requirements) {
+    const { needsUID, needsCounter, needsFileData } = requirements;
+    
+    if (needsFileData) {
+      return 'full';
+    }
+    
+    if (needsUID && needsCounter) {
+      return 'uidCounter';
+    }
+    
+    if (needsUID) {
+      return 'uidOnly';
+    }
+    
+    if (needsCounter) {
+      return 'counterOnly';
+    }
+    
+    return 'uidCounter';
   }
 }
 
