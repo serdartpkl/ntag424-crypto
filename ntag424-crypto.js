@@ -6,10 +6,13 @@
  * hardware dependencies, designed for real-world applications with known data.
  * 
  * @author Serdar Tepekule
- * @version 1.0.0
+ * @version 2.0.0
  * @license MIT
  * 
  * Key Features:
+ * - Fixed SDM profile validation bug
+ * - Structured error handling with context
+ * - Enhanced security with memory management
  * - Multiple key derivation algorithms (NTAG424 official, HKDF, PBKDF2, custom hash)
  * - Configurable SDM (Secure Dynamic Messaging) modes
  * - AES-128 encryption/decryption with CBC and ECB modes
@@ -30,14 +33,16 @@
  * // Generate secure master key
  * const masterKey = NTAG424Crypto.Encoder.generateMasterKey();
  * 
- * // Encrypt data
- * const encrypted = NTAG424Crypto.Encoder.encrypt(masterKey, '04AABBCCDDEE80', 42);
+ * // Encrypt data (file data requires 'full' profile)
+ * const encrypted = NTAG424Crypto.Encoder.encrypt(masterKey, '04AABBCCDDEE80', 42, 'Secret!', {
+ *   sdmProfile: 'full'
+ * });
  * 
  * // Generate URL
  * const url = NTAG424Crypto.Encoder.generateURL(encrypted, 'https://mysite.com/nfc');
  * 
  * // Decrypt data
- * const decoder = new NTAG424Crypto.Decoder(masterKey);
+ * const decoder = new NTAG424Crypto.Decoder(masterKey, { sdmProfile: 'full' });
  * const result = decoder.decrypt(url);
  * ```
  */
@@ -115,12 +120,13 @@ class NTAG424Crypto {
     return {
       version: '2.0.0',
       name: 'ntag424-crypto',
-      author: 'NTAG424 Crypto Team',
+      author: 'Serdar Tepekule',
       license: 'MIT',
-      description: 'Focused NTAG424 cryptographic library for real-world applications',
+      description: 'NTAG424 cryptographic library with fixed SDM validation and enhanced security',
       features: [
-        'Secure master key generation',
-        'Multiple output formats (URL, query string, object)',
+        'Fixed SDM profile validation bug',
+        'Structured error handling',
+        'Enhanced security with memory management',
         'Multiple key derivation methods',
         'Configurable SDM profiles',
         'Production-ready performance',
@@ -168,146 +174,6 @@ class NTAG424Crypto {
     results.allValid = results.crypto && results.aesCmac;
     
     return results;
-  }
-  
-  /**
-   * Quick validation helper
-   * 
-   * @param {string} masterKey - Master key as hex string
-   * @param {string|Object} input - NTAG424 data to validate
-   * @param {Object} options - Optional configuration
-   * @returns {Object} Quick validation result
-   */
-  static quickValidate(masterKey, input, options = {}) {
-    try {
-      const decoder = new Decoder(masterKey, options);
-      const result = decoder.decrypt(input);
-      
-      return {
-        valid: result.success && result.cmacValid,
-        success: result.success,
-        cmacValid: result.cmacValid,
-        uid: result.uid,
-        counter: result.readCounter,
-        error: result.error
-      };
-    } catch (error) {
-      return {
-        valid: false,
-        success: false,
-        error: error.message
-      };
-    }
-  }
-  
-  /**
-   * Performance benchmark helper
-   * 
-   * @param {Object} options - Benchmark options
-   * @returns {Object} Benchmark results
-   */
-  static benchmark(options = {}) {
-    const {
-      iterations = 1000,
-      masterKey = null,
-      uid = '04AABBCCDDEE80',
-      counter = 42
-    } = options;
-    
-    try {
-      const testMasterKey = masterKey || Encoder.generateMasterKey();
-      const testData = Encoder.encrypt(testMasterKey, uid, counter);
-      
-      const decoder = new Decoder(testMasterKey);
-      const testInput = {
-        picc: testData.encryptedData.picc,
-        cmac: testData.encryptedData.cmac
-      };
-      
-      const startTime = Date.now();
-      let successCount = 0;
-      
-      for (let i = 0; i < iterations; i++) {
-        const result = decoder.decrypt(testInput);
-        if (result.success) successCount++;
-      }
-      
-      const totalTime = Date.now() - startTime;
-      
-      return {
-        iterations,
-        totalTime,
-        avgDecryptTime: totalTime / iterations,
-        throughput: Math.round(iterations / (totalTime / 1000)),
-        successRate: (successCount / iterations) * 100,
-        testData: {
-          masterKey: testMasterKey,
-          uid: uid,
-          counter: counter
-        }
-      };
-    } catch (error) {
-      return {
-        error: error.message
-      };
-    }
-  }
-  
-  /**
-   * Create a complete NTAG424 solution
-   * 
-   * @param {Object} config - Configuration for the solution
-   * @returns {Object} Complete solution with encoder, decoder, and utilities
-   */
-  static createSolution(config = {}) {
-    const {
-      masterKey = null,
-      baseURL = 'https://example.com/nfc',
-      sdmProfile = 'uidCounter',
-      keyDerivationMethod = 'ntag424Official'
-    } = config;
-    
-    const actualMasterKey = masterKey || Encoder.generateMasterKey();
-    
-    return {
-      masterKey: actualMasterKey,
-      
-      encrypt(uid, counter, fileData = null) {
-        return Encoder.encrypt(actualMasterKey, uid, counter, fileData, {
-          sdmProfile,
-          keyDerivationMethod
-        });
-      },
-      
-      generateURL(encryptedData) {
-        return Encoder.generateURL(encryptedData, baseURL);
-      },
-      
-      generateQueryString(encryptedData) {
-        return Encoder.generateQueryString(encryptedData);
-      },
-      
-      decrypt(input) {
-        const decoder = new Decoder(actualMasterKey, {
-          sdmProfile,
-          keyDerivationMethod
-        });
-        return decoder.decrypt(input);
-      },
-      
-      validate(input) {
-        return NTAG424Crypto.quickValidate(actualMasterKey, input, {
-          sdmProfile,
-          keyDerivationMethod
-        });
-      },
-      
-      config: {
-        baseURL,
-        sdmProfile,
-        keyDerivationMethod
-      }
-    };
   }
 }
 
