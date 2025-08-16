@@ -1,6 +1,6 @@
 {
   "name": "ntag424-crypto",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Production-ready Node.js library for NTAG424 DNA encryption and decryption operations.",
   "main": "ntag424-crypto.js",
   "scripts": {
