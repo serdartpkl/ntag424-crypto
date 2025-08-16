@@ -1,10 +1,14 @@
-const { SDMProfileError, ValidationError } = require('./error-types');
-
 /**
  * SDM Configuration with Proper Validation
  * 
- * Fixes the bug where file data could be encrypted with profiles
- * that don't support it, and adds comprehensive validation.
+ * Manages different SDM profile configurations for NTAG424 tags.
+ * Fixes the bug where file data could be encrypted with profiles that don't support it.
+ */
+
+const { SDMProfileError, ValidationError } = require('./error-types');
+
+/**
+ * SDM Configuration Manager
  */
 class SDMConfig {
   
@@ -64,7 +68,6 @@ class SDMConfig {
 
   /**
    * Get a predefined SDM profile by name
-   * 
    * @param {string} profileName - Name of the profile
    * @returns {Object} The SDM profile configuration object
    */
@@ -87,7 +90,6 @@ class SDMConfig {
 
   /**
    * Validate operation compatibility with SDM profile
-   * 
    * @param {string} operation - Operation type ('encrypt' or 'decrypt')
    * @param {Object|string} profile - SDM profile or profile name
    * @param {Object} data - Data to validate
@@ -159,7 +161,6 @@ class SDMConfig {
 
   /**
    * Create a custom SDM profile configuration
-   * 
    * @param {Object} config - Configuration object
    * @returns {Object} Complete SDM profile configuration
    */
@@ -193,7 +194,6 @@ class SDMConfig {
 
   /**
    * Validate SDM profile configuration
-   * 
    * @param {Object} profile - Profile to validate
    * @returns {Object} Validation result
    */
@@ -256,7 +256,6 @@ class SDMConfig {
 
   /**
    * Get available profile names
-   * 
    * @returns {string[]} Array of profile names
    */
   static getAvailableProfiles() {
@@ -265,7 +264,6 @@ class SDMConfig {
 
   /**
    * Get profile information for debugging
-   * 
    * @param {string} profileName - Name of the profile
    * @returns {Object} Profile information
    */
@@ -292,7 +290,6 @@ class SDMConfig {
 
   /**
    * Suggest compatible profile for given requirements
-   * 
    * @param {Object} requirements - Requirements object
    * @returns {string} Suggested profile name
    */
